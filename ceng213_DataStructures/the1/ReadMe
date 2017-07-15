@@ -1,0 +1,12 @@
+This is basic implementation of simple text-editor.
+
+With help of makefile you can create "hw1" executable.
+
+with "./hw1 --record file.out"  you can record the operations that you performed to file.out
+and with
+"./hw1 --replay file.out"
+you can replay it.
+
+Also detailed explanation of problem is provided in HW1.pdf file.
+
+And there exist tester for the solution in tester.zip, by extracting the files from it and by executing tester.py with command: 	"python tester.py" you can test it.
