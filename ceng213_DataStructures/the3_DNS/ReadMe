@@ -1,0 +1,5 @@
+you can run it with this command:
+  g++ DNSManager.cpp Tables.cpp hw3.cpp -w
+and test by replacing hw3.cpp with any cpp file from input folder.
+
+Note: code needs further improvements.
