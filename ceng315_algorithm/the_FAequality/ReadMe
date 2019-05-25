@@ -1,5 +1,0 @@
-Here I implemented algorithm developed by Hopcroft and Karp in 1971 that checks the equality of two finite automaton.
-
-With help of Makefile you can create "runHK" executable.
-
-and with "./runHK input1.txt input2.txt" command you can check if FAs defined in input1.txt and input2.txt are equal or not

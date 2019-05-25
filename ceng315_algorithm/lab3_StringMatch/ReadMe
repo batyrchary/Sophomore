@@ -1,5 +1,0 @@
-This is implementation of problem in "handout.pdf".
-
-With help of makefile you can create "evaluate" exe.
-
-Also with "python grade.py ./Inputs/texts.txt ./Inputs/patterns.txt ./Inputs/css.txt ./Inputs/solutions.txt" you can check solution.
