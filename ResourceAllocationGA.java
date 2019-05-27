@@ -636,10 +636,10 @@ public class ResourceAllocationGA
 
         ret=ret.sortByFitness(ret);
 
-        for (int i=0;i<ret.size();i++)
-        {
-            System.out.println("fit="+ret.get(i).fitness);
-        }
+        //for (int i=0;i<ret.size();i++)
+        //{
+        //    System.out.println("fit="+ret.get(i).fitness);
+        //}
 
 
         Population retf=new Population();
@@ -655,7 +655,7 @@ public class ResourceAllocationGA
     {
         try
         {
-        //    FileWriter writer = new FileWriter(output_file);
+            FileWriter writer = new FileWriter(output_file);
 
             float prevAvgFit = 0;
             float newAvgFit = 0;
@@ -672,7 +672,7 @@ public class ResourceAllocationGA
             int counter = 0;
 
             System.out.println("Generation,averageFitness,BestFitness, leastOpenedBins");
-          //  writer.write("Generation,averageFitness,BestFitness, leastOpenedBins\n");
+            writer.write("Generation,averageFitness,BestFitness, leastOpenedBins\n");
             //while (counter < maximumGenerations && consGeneration <consecutive_generations)
             while (counter < maximumGenerations)
             {
@@ -692,9 +692,9 @@ public class ResourceAllocationGA
                 counter++;
 
                 System.out.println(counter+","+prevAvgFit+","+prevGeneration.get(0).fitness+","+prevGeneration.get(0).bins);
-  //              writer.write(counter+","+prevAvgFit+","+prevGeneration.get(0).fitness+","+prevGeneration.get(0).bins+"\n");
+                writer.write(counter+","+prevAvgFit+","+prevGeneration.get(0).fitness+","+prevGeneration.get(0).bins+"\n");
             }
-//            writer.close();
+            writer.close();
 
             Chromosome best= prevGeneration.get(0);
 
@@ -711,7 +711,17 @@ public class ResourceAllocationGA
 
         String path_bin = "./example_input/example_bin_input.csv";
         String path_item = "./example_input/example_item_input.csv";
-        String path_toConfig="./example_input/config.csv";
+        String path_toConfig="./example_input/config.txt";
+
+
+
+        if (args.length > 4)
+        {
+            path_bin = args[0];
+            path_item = args[1];
+            path_toConfig = args[2];
+            output_file = args[3];
+        }
 
 
         ReadData(path_bin, path_item, path_toConfig);
@@ -777,6 +787,66 @@ public class ResourceAllocationGA
 
     public static void ReadData(String path_bin, String path_item, String path_toConfig)
     {
+
+        try {
+            File file = new File(path_toConfig);
+
+            BufferedReader br = new BufferedReader(new FileReader(file));
+            String line;
+
+            while ((line = br.readLine()) != null) {
+
+                line=line.split(";")[0];
+
+                String argument=line.split("=")[0];
+                String paramter=line.split("=")[1];
+
+                if(argument.equals("XORtype"))
+                {
+                    XORtype=paramter;
+                }
+                if(argument.equals("mutationType"))
+                {
+                    mutationType=paramter;
+                }
+                if(argument.equals("selectionType"))
+                {
+                    selectionType=paramter;
+                }
+                if(argument.equals("crossoverProbability"))
+                {
+                    crossoverProbability=Float.parseFloat(paramter);
+                }
+                if(argument.equals("mutationProbability"))
+                {
+                    mutationProbability=Float.parseFloat(paramter);
+                }
+                if(argument.equals("population"))
+                {
+                    population=Integer.parseInt(paramter);
+                }
+                if(argument.equals("mutationProbability"))
+                {
+                    mutationProbability=Float.parseFloat(paramter);
+                }
+                if(argument.equals("mutationProbability"))
+                {
+                    mutationProbability=Float.parseFloat(paramter);
+                }
+                if(argument.equals("minFitnessDifference"))
+                {
+                    minFitnessDifference=Float.parseFloat(paramter);
+                }
+                if(argument.equals("maximumGenerations"))
+                {
+                    maximumGenerations=Integer.parseInt(paramter);
+                }
+
+            }
+        }catch (Exception e){ System.out.println("exception in configReader"); }
+
+
+/*
         XORtype="TwoPoint";         //SinglePoint,   TwoPoint
         mutationType="Inversion";   //SingleBitFlip, Inversion, Flip
         selectionType="RouletteWheel";
@@ -787,7 +857,7 @@ public class ResourceAllocationGA
         consecutive_generations=10;
         minFitnessDifference=0.5;
         maximumGenerations=1;
-
+*/
 
         ReaderHelper(path_bin,1);
         ReaderHelper(path_item,0);
