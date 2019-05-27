@@ -39,6 +39,8 @@ Example input and configuration files are provided inside **example_input** fold
 
 If you will not provide command line arguments it will use example input files.
 
+With config file - ** config.txt ** you can provided arguments such as number of generations, probability of crossover and mutation etc.
+
 ```
 
 javac *.java
