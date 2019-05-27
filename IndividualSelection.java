@@ -1,72 +1,35 @@
 import java.util.ArrayList;
 import java.util.Random;
 
-public class IndividualSelection {
-
-
-
-
-    public static float allFitness(Population generation, int maximumMach, String type, boolean ratioVarmi)
+public class IndividualSelection
+{
+    public static float RandomPoint(Population generation)
     {
         float allfitness=0;
 
-        float allfitnessb=0;
-        float allfitnessl=0;
-        float allfitnessh=0;
 
         for(int i=0; i<generation.size();i++)
         {
-            allfitnessb=allfitness+generation.get(i).hfitnes.fbin;
-            allfitnessl=allfitness+generation.get(i).hfitnes.flatency;
-            allfitnessh=allfitness+generation.get(i).hfitnes.fhybrid;
+            allfitness=allfitness+generation.get(i).fitness;
         }
-
-        float rat=allfitnessl/allfitnessb;
-
-        if(type.equals("bin"))
-            allfitness=allfitnessb;
-        if(type.equals("latency"))
-            allfitness=allfitnessl;
-        if(type.equals("hybrid"))
-            allfitness=allfitnessl*rat+allfitnessb;
-
-
 
         Random r = new Random();
         float random=0+r.nextFloat()*(allfitness-0);
 
+        //System.out.println("allFitness="+allfitness+"\trandom="+random);
 
-        if (ratioVarmi==false)
-            return random;
-        else
-            return rat;
+        return random;
     }
 
 
-    public static Chromosome RouletteWheel(Population generation, int maximumMach, String type)
+    public static Chromosome RouletteWheel(Population generation)
     {
-        float ratioLtoB=allFitness(generation, maximumMach, type, true);
-        float randomInt=allFitness(generation, maximumMach, type, false);
-
-        float allfitnessb=0;
-        float allfitnessl=0;
-        float allfitnessh=0;
+        float randomInt=RandomPoint(generation);
 
         float wheel=0;
         for(int i=0; i<generation.size();i++)
         {
-
-            allfitnessb=generation.get(i).hfitnes.fbin;
-            allfitnessl=generation.get(i).hfitnes.flatency;
-            allfitnessh=generation.get(i).hfitnes.fhybrid;
-
-
-            if(type.equals("bin"))
-                wheel=wheel+allfitnessb;
-            if(type.equals("latency"))
-                wheel=wheel+allfitnessl;
-            if(type.equals("hybrid"))
-                wheel=wheel+allfitnessl*ratioLtoB+allfitnessb;
+            wheel=wheel+generation.get(i).fitness;
 
             if(randomInt<wheel)
                 return generation.get(i);
@@ -76,7 +39,7 @@ public class IndividualSelection {
     }
 
 
-    public static Chromosome Tournament(Population generation, String type)
+    public static Chromosome Tournament(Population generation)
     {
         Random r = new Random();
         int random1=r.nextInt(generation.size()-1);
@@ -85,19 +48,9 @@ public class IndividualSelection {
         if(random1==random2)
             return generation.get(random1);
 
-        if(type.equals("bin"))
-        {
-            if(generation.get(random1).hfitnes.fbin > generation.get(random2).hfitnes.fbin)
-                return generation.get(random1);
-            else
-                return generation.get(random2);
-        }
+        if(generation.get(random1).fitness > generation.get(random2).fitness)
+            return generation.get(random1);
         else
-        {
-            if(generation.get(random1).hfitnes.flatency > generation.get(random2).hfitnes.flatency)
-                return generation.get(random1);
-            else
-                return generation.get(random2);
-        }
+            return generation.get(random2);
     }
 }

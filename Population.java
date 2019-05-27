@@ -54,9 +54,8 @@ public  class Population
         return ret;
     }
 
-    public Population sortByFitness(Population p1, String type) {
-
-
+    public Population sortByFitness(Population p1)
+    {
         ArrayList<Chromosome> ret = new ArrayList<>();
 
         for(int i=0; i<p1.chromosomes.size(); i++)
@@ -69,23 +68,9 @@ public  class Population
         {
             @Override
             public int compare(Chromosome p1, Chromosome p2) {
-                float p1f=0;
-                float p2f=0;
-                if(type.equals("bin"))
-                {
-                    p1f=p1.hfitnes.fbin;
-                    p2f=p2.hfitnes.fbin;
-                }
-                else if(type.equals("latency"))
-                {
-                    p1f=p1.hfitnes.flatency;
-                    p2f=p2.hfitnes.flatency;
-                }
-                else
-                {
-                    p1f=p1.hfitnes.fhybrid;
-                    p2f=p2.hfitnes.fhybrid;
-                }
+                float p1f=p1.fitness;
+                float p2f=p2.fitness;
+
                 if(p1f>p2f)
                 {
                     return 1;
@@ -101,12 +86,7 @@ public  class Population
             }
         });
 
-        if(type.equals("bin"))
-            ret.sort(Comparator.comparingDouble(Chromosome::getFitness1)); //smallest to largest
-        else if(type.equals("latency"))
-            ret.sort(Comparator.comparingDouble(Chromosome::getFitness2)); //smallest to largest
-        else if(type.equals("hybrid"))
-            ret.sort(Comparator.comparingDouble(Chromosome::getFitness3)); //smallest to largest
+        ret.sort(Comparator.comparingDouble(Chromosome::getFitness)); //smallest to largest
 
         Collections.reverse(ret);
         return new Population(ret);

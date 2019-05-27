@@ -7,71 +7,45 @@ import java.util.*;
 public class ResourceAllocationGA
 {
 
-    public static class Pair
-    {
-        public int prob;
-        public String server;
-
-        public Pair(int p, String s)
-        {
-            this.prob=p;
-            this.server=s;
-        }
-    }
-
-    public static ArrayList<Integer> probs=new ArrayList<>();
-    public static ArrayList<String> servers=new ArrayList<>();
-    public static HashMap<String,Integer> latencies=new HashMap<>();
-
-    public static ArrayList<Pair> pairs=new ArrayList<>();
-    public static HashMap<Integer,ArrayList<String> > serversSeenByProb=new HashMap<>();
-
     //<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
     public static Random rand = new Random();
-    public static ArrayList<Machine> MachineEvents=new ArrayList<>();
-    public static ArrayList<Task> TaskEvents=new ArrayList<>();
+    public static ArrayList<Bin> Bins=new ArrayList<>();
+    public static ArrayList<Item> Items=new ArrayList<>();
 
-    public static ArrayList<Task> decreasingTasksSortedByCPU=new ArrayList<>();
-    public static ArrayList<Task> decreasingTasksSortedByMemory=new ArrayList<>();
-    public static ArrayList<Task> decreasingTasksSortedBySpace=new ArrayList<>();
-    public static ArrayList<Task> increasingTasksSortedByCPU=new ArrayList<>();
-    public static ArrayList<Task> increasingTasksSortedByMemory=new ArrayList<>();
-    public static ArrayList<Task> increasingTasksSortedBySpace=new ArrayList<>();
+    public static ArrayList<Item> decreasingItemsSortedByWidth =new ArrayList<>();
+    public static ArrayList<Item> decreasingItemsSortedByHeight=new ArrayList<>();
+    public static ArrayList<Item> increasingItemsSortedByWidth =new ArrayList<>();
+    public static ArrayList<Item> increasingItemsSortedByHeight =new ArrayList<>();
+    public static ArrayList<Item> increasingItemsSortedBySpace =new ArrayList<>();
+    public static ArrayList<Item> decreasingItemsSortedBySpace =new ArrayList<>();
 
-    public static ArrayList<Task> largestsmallestTasksbySpace=new ArrayList<>();
-
-    public static ArrayList<Machine> decreasingMachinesSortedBySpace=new ArrayList<>();       //needs to be updated each time
-    public static ArrayList<Machine> decreasingMachinesSortedByCPULeft=new ArrayList<>();     //needs to be updated each time
-    public static ArrayList<Machine> decreasingMachinesSortedByMemoryLeft=new ArrayList<>();  //needs to be updated each time
-
+    public static ArrayList<Bin> decreasingBinsSortedBySpace =new ArrayList<>();       //needs to be updated each time
+    public static ArrayList<Bin> decreasingBinsSortedByCPULeft =new ArrayList<>();       //needs to be updated each time
+    public static ArrayList<Bin> decreasingBinsSortedByMemoryLeft =new ArrayList<>();       //needs to be updated each time
 
     public static String XORtype="TwoPoint";
     public static String mutationType="Inversion";
     public static String selectionType="RouletteWheel";
-    public static String fitnessType="hybrid";
+
 
     public static float crossoverProbability=0.9f;
     public static float mutationProbability=0.05f;
 
-
-    ///////////////////////////////////////////////////////////////////
+    public static int population=100;
+    public static int consecutive_generations=10;
+    public static double minFitnessDifference=0.5;
+    public static int  maximumGenerations=50;
 
     public static int numberOfBitsInGene=5;
     public static int number_of_allocations=0;
-    public static int maximumNumberOfMachines;
+
 
     ///////////////////////////////////////////////////////////////////
 
     public static String individualHeuristic="NAN";
     public static String individualParameter="NAN";
 
-
-    public static boolean dynamic=true;
-    public static HashMap<String,Integer> DynamicFromPrevious=new HashMap<>();
-    public static HashMap<String,Integer> DynamicCurrent=new HashMap<>();
-    public static float ratio=0;
-    public static Stack<Chromosome> PreviousPopulation=null;
 
     public static class assignmentPair
     {
@@ -86,11 +60,11 @@ public class ResourceAllocationGA
 
     public static class PairU
     {
-        public Machine m;
-        public Task t;
+        public Bin m;
+        public Item t;
         public int nextFitOffset=0;
 
-        public PairU(Machine m, Task t, int n)
+        public PairU(Bin m, Item t, int n)
         {
             this.m=m;
             this.t=t;
@@ -102,130 +76,99 @@ public class ResourceAllocationGA
     {
         Population population=new Population();
 
-        ArrayList<individualFitnessRunnable> threads=new ArrayList<>();
-
         for (float p=0; p<numberOfIndividuals; p++)
         {
             Chromosome c = new Chromosome();
 
-            if((p/numberOfIndividuals) < ratio && PreviousPopulation!=null && dynamic==true && !PreviousPopulation.empty())
-            {
-               // Chromosome previousInd=PreviousPopulation.get((int) p);
-                Chromosome previousInd=PreviousPopulation.pop();
-
-
-                if(previousInd.size()<number_of_allocations)
-                {
-                    for (int i = 0; i < previousInd.size(); i++)
-                    {
-                        Gene g=new Gene(previousInd.chromosome.get(i));
-                        c.add(g);
-                    }
-                    for (int i = previousInd.size(); i < number_of_allocations; i++)
-                    {
-                        Gene g = new Gene();
-                        for (int j = 0; j < numberOfBitsInGene; j++) {
-                            int random = (int) (Math.random() * 10 + 1);
-                            g.add(random % 2);
-                        }
-                        c.add(g);
-                    }
+            for (int i = 0; i < number_of_allocations; i++) {
+                Gene g = new Gene();
+                for (int j = 0; j < numberOfBitsInGene; j++) {
+                    int random = (int) (Math.random() * 10 + 1);
+                    g.add(random % 2);
                 }
-                else
-                {
-                    for (int i = 0; i < number_of_allocations; i++)
-                    {
-                        Gene g=new Gene(previousInd.chromosome.get(i));
-                        c.add(g);
-                    }
-                }
+                c.add(g);
             }
-            else
-            {
-                for (int i = 0; i < number_of_allocations; i++) {
-                    Gene g = new Gene();
-                    for (int j = 0; j < numberOfBitsInGene; j++) {
-                        int random = (int) (Math.random() * 10 + 1);
-                        g.add(random % 2);
-                    }
-                    c.add(g);
-                }
-            }
-            c.hfitnes=individualFitness(c);
+            //c.fitness=individualFitness(c);
+            c.bins=individualFitness(c);
+            c.fitness=1.0f/c.bins;
+
             population.add(c);
         }
         return population;
     }
 
-    public static PairU TaskAllocator(int HeuristicCode, int parameter, ArrayList<Task> AllocatedTasks, PairU p)
-    {
-        Task taskToBeAssigned=p.t;
 
-        // Task taskToBeAssigned=null;
-        if(parameter==0 || parameter==11) //decreasingTasksSortedBySpace
+    public static float averageFitness(Population population)
+    {
+        float fitness=0;
+        for(int i=0; i<population.size();i++)
         {
-            for(int t=0; t<decreasingTasksSortedBySpace.size(); t++)
+            fitness=fitness+population.get(i).fitness;
+        }
+        return fitness/population.size();
+    }
+
+
+    public static PairU itemAllocator(int HeuristicCode, int parameter, ArrayList<Item> AllocatedItem, PairU p)
+    {
+        Item itemToBeAssigned=p.t;
+
+        // item itemToBeAssigned=null;
+        if(parameter==0 || parameter==11) //decreasingitemsSortedBySpace
+        {
+            for(int t=0; t<decreasingItemsSortedBySpace.size(); t++)
             {
-                if(!Task.ContainsTask(AllocatedTasks,decreasingTasksSortedBySpace.get(t)))
+                if(!Item.ContainsItem(AllocatedItem,decreasingItemsSortedBySpace.get(t)))
                 {
-                    taskToBeAssigned=decreasingTasksSortedBySpace.get(t);
+                    itemToBeAssigned=decreasingItemsSortedBySpace.get(t);
                     break;
                 }
             }
         }
-        else if(parameter==1)//increasingTasksSortedBySpace
+        else if(parameter==1)//increasingitemsSortedBySpace
         {
-            for(int t=0; t<increasingTasksSortedBySpace.size(); t++)
+            for(int t=0; t<increasingItemsSortedBySpace.size(); t++)
             {
-                if(!Task.ContainsTask(AllocatedTasks,increasingTasksSortedBySpace.get(t)))
+                if(!Item.ContainsItem(AllocatedItem,increasingItemsSortedBySpace.get(t)))
                 {
-                    taskToBeAssigned=increasingTasksSortedBySpace.get(t);
+                    itemToBeAssigned=increasingItemsSortedBySpace.get(t);
                     break;
                 }
             }
         }
         else if(parameter==10) //notsorted
         {
-            for(int t=0; t<TaskEvents.size(); t++)
+            for(int t=0; t<Items.size(); t++)
             {
-                if(!Task.ContainsTask(AllocatedTasks,TaskEvents.get(t)))
+                if(!Item.ContainsItem(AllocatedItem,Items.get(t)))
                 {
-                    taskToBeAssigned=TaskEvents.get(t);
+                    itemToBeAssigned=Items.get(t);
                     break;
                 }
             }
         }
-        else if(parameter==11) //largest-smallest
-        {
-            for(int t=0; t<largestsmallestTasksbySpace.size(); t++)
-            {
-                if(!Task.ContainsTask(AllocatedTasks,largestsmallestTasksbySpace.get(t)))
-                {
-                    taskToBeAssigned=largestsmallestTasksbySpace.get(t);
-                    break;
-                }
-            }
-        }
-        return (new PairU(p.m,taskToBeAssigned,p.nextFitOffset));
-        //  return taskToBeAssigned;
+
+        return (new PairU(p.m,itemToBeAssigned,p.nextFitOffset));
+        //  return itemToBeAssigned;
     }
 
-    public static PairU MachineFinder(int HeuristicCode, ArrayList<Machine> openMachines,ArrayList<Machine> notOpenMachines, ArrayList<Task> AllocatedTasks, PairU p)
+    public static PairU BinFinder(int HeuristicCode, ArrayList<Bin> openBins,ArrayList<Bin> notopenBins, ArrayList<Item> AllocatedItem, PairU p)
     {
+
 
         boolean NotFoundInOpen=true;
 
-        Task taskToBeAssigned=p.t;
-        Machine machineToAllocate=p.m;
+        Item itemToBeAssigned=p.t;
+        Bin BinToAllocate=p.m;
         int nextFitOffset=p.nextFitOffset;
 
         if(HeuristicCode==0)                //FirstFit
         {
-            for(int m=0; m<openMachines.size(); m++)
+            for(int m=0; m<openBins.size(); m++)
             {
-                if(Machine.FitsToMachine(openMachines.get(m),taskToBeAssigned))
+                if(Bin.FitsToBin(openBins.get(m),itemToBeAssigned))
                 {
-                    machineToAllocate=openMachines.get(m);
+                    BinToAllocate=openBins.get(m);
                     NotFoundInOpen=false;
                     break;
                 }
@@ -233,14 +176,14 @@ public class ResourceAllocationGA
         }
         else if(HeuristicCode==1 || HeuristicCode==11 || HeuristicCode==111 )           //BestFit & WorstFit & AlmostWorstFit
         {
-            ArrayList<Machine> openMachinesSortedBySpace=Machine.MachineSorter(openMachines,"All", "decreasing");
+            ArrayList<Bin> openBinsSortedBySpace=Bin.BinSorter(openBins,"All", "decreasing");
             if(HeuristicCode==1)
             {
-                for (int m = 0; m < openMachinesSortedBySpace.size(); m++) {
+                for (int m = 0; m < openBinsSortedBySpace.size(); m++) {
 
-                    if(Machine.FitsToMachine(openMachinesSortedBySpace.get(m),taskToBeAssigned))
+                    if(Bin.FitsToBin(openBinsSortedBySpace.get(m),itemToBeAssigned))
                     {
-                        machineToAllocate = openMachinesSortedBySpace.get(m);
+                        BinToAllocate = openBinsSortedBySpace.get(m);
                         NotFoundInOpen = false;
                         break;
                     }
@@ -249,13 +192,13 @@ public class ResourceAllocationGA
             if(HeuristicCode==11 || HeuristicCode==111)
             {
                 int counter=0;
-                for (int m = openMachinesSortedBySpace.size()-1; m >= 0; m--)
+                for (int m = openBinsSortedBySpace.size()-1; m >= 0; m--)
                 {
 
-                    if(Machine.FitsToMachine(openMachinesSortedBySpace.get(m), taskToBeAssigned))
+                    if(Bin.FitsToBin(openBinsSortedBySpace.get(m), itemToBeAssigned))
                     {
                         counter++;
-                        machineToAllocate = openMachinesSortedBySpace.get(m);
+                        BinToAllocate = openBinsSortedBySpace.get(m);
                         NotFoundInOpen = false;
                         if(HeuristicCode==11)
                             break;
@@ -267,11 +210,11 @@ public class ResourceAllocationGA
         }
         else if(HeuristicCode==10)          //NextFit
         {
-            for(;nextFitOffset<openMachines.size();nextFitOffset++)
+            for(;nextFitOffset<openBins.size();nextFitOffset++)
             {
-                if(Machine.FitsToMachine(openMachines.get(nextFitOffset),taskToBeAssigned))
+                if(Bin.FitsToBin(openBins.get(nextFitOffset),itemToBeAssigned))
                 {
-                    machineToAllocate=openMachines.get(nextFitOffset);
+                    BinToAllocate=openBins.get(nextFitOffset);
                     NotFoundInOpen=false;
                     break;
                 }
@@ -279,18 +222,18 @@ public class ResourceAllocationGA
         }
         else if(HeuristicCode==100)          //Filler
         {
-            for(int i=0; i<openMachines.size(); i++)
+            for(int i=0; i<openBins.size(); i++)
             {
-                for(int t=0; t<decreasingTasksSortedBySpace.size(); t++)
+                for(int t=0; t<decreasingItemsSortedBySpace.size(); t++)
                 {
-                    Task task=decreasingTasksSortedBySpace.get(t);
-                    if(!Task.ContainsTask(AllocatedTasks,task))
+                    Item item=decreasingItemsSortedBySpace.get(t);
+                    if(!Item.ContainsItem(AllocatedItem,item))
                     {
-                        if(Machine.FitsToMachine(openMachines.get(i),task))
+                        if(Bin.FitsToBin(openBins.get(i),item))
                         {
-                            machineToAllocate=openMachines.get(i);
+                            BinToAllocate=openBins.get(i);
                             NotFoundInOpen=false;
-                            taskToBeAssigned=task;
+                            itemToBeAssigned=item;
                             break;
                         }
                     }
@@ -299,26 +242,26 @@ public class ResourceAllocationGA
         }
         else if(HeuristicCode==101 )          //Djang and Fitch (DJD).
         {
-            ArrayList<Machine> openMachinesSortedBySpace=Machine.MachineSorter(openMachines,"All", "increasing");
+            ArrayList<Bin> openBinsSortedBySpace=Bin.BinSorter(openBins,"All", "increasing");
 
             float waste=1000000000;
 
-            for(int i=0; i<openMachinesSortedBySpace.size(); i++)
+            for(int i=0; i<openBinsSortedBySpace.size(); i++)
             {
-                for(int t=0; t<decreasingTasksSortedBySpace.size(); t++)
+                for(int t=0; t<decreasingItemsSortedBySpace.size(); t++)
                 {
-                    Task tt=decreasingTasksSortedBySpace.get(t);
-                    Machine mm=openMachinesSortedBySpace.get(i);
+                    Item tt=decreasingItemsSortedBySpace.get(t);
+                    Bin mm=openBinsSortedBySpace.get(i);
 
-                    if(!Task.ContainsTask(AllocatedTasks,tt))
+                    if(!Item.ContainsItem(AllocatedItem,tt))
                     {
-                        if(Machine.FitsToMachine(mm,tt))
+                        if(Bin.FitsToBin(mm,tt))
                         {
-                            float wasteN=mm.totalCapacityLeft-(tt.memoryRequest*tt.CPUrequest);
+                            float wasteN=mm.totalCapacityLeft-(tt.heightRequest*tt.widthRequest);
                             if(waste>wasteN)
                             {
-                                machineToAllocate=mm;
-                                taskToBeAssigned=tt;
+                                BinToAllocate=mm;
+                                itemToBeAssigned=tt;
                                 NotFoundInOpen=false;
                                 waste=wasteN;
                             }
@@ -329,11 +272,11 @@ public class ResourceAllocationGA
         }
         else if(HeuristicCode==110)                //Lastfit
         {
-            for(int m=openMachines.size()-1; m>=0; m--)
+            for(int m=openBins.size()-1; m>=0; m--)
             {
-                if(Machine.FitsToMachine(openMachines.get(m),taskToBeAssigned))
+                if(Bin.FitsToBin(openBins.get(m),itemToBeAssigned))
                 {
-                    machineToAllocate=openMachines.get(m);
+                    BinToAllocate=openBins.get(m);
                     NotFoundInOpen=false;
                     break;
                 }
@@ -342,27 +285,28 @@ public class ResourceAllocationGA
 
         if(NotFoundInOpen)
         {
-            for (int m = 0; m < notOpenMachines.size(); m++)
+            for (int m = 0; m < notopenBins.size(); m++)
             {
-                if(Machine.FitsToMachine(notOpenMachines.get(m), taskToBeAssigned))
+                if(Bin.FitsToBin(notopenBins.get(m), itemToBeAssigned))
                 {
-                    machineToAllocate = notOpenMachines.get(m);
+                    BinToAllocate = notopenBins.get(m);
                     break;
                 }
             }
         }
 
-        if(machineToAllocate==null)
+        if(BinToAllocate==null)
         {
-            for(int i=0; i<notOpenMachines.size(); i++)
+
+            for(int i=0; i<notopenBins.size(); i++)
             {
-                if(notOpenMachines.get(i).CPULeft>taskToBeAssigned.CPUrequest && notOpenMachines.get(i).MemoryLeft>taskToBeAssigned.memoryRequest)
-                    System.out.println(notOpenMachines.get(i).myMachineID);
+                if(notopenBins.get(i).widthLeft>itemToBeAssigned.widthRequest && notopenBins.get(i).heightLeft>itemToBeAssigned.heightRequest)
+                    System.out.println(notopenBins.get(i).binID);
             }
-            System.out.println(taskToBeAssigned.memoryRequest+"\t"+taskToBeAssigned.CPUrequest);
-            System.out.println("Cant Find Machine");
+            System.out.println(itemToBeAssigned.heightRequest+"\t"+itemToBeAssigned.widthRequest);
+            System.out.println("Cant Find Bin");
         }
-        return (new PairU(machineToAllocate,taskToBeAssigned,nextFitOffset));
+        return (new PairU(BinToAllocate,itemToBeAssigned,nextFitOffset));
     }
 
     public static ArrayList<Integer> applyOneHeuristic(int H, int p)
@@ -527,7 +471,6 @@ public class ResourceAllocationGA
         return ret;
     }
 
-
     public static class individualFitnessRunnable implements Runnable {
         Chromosome individual;
         String name;
@@ -542,18 +485,17 @@ public class ResourceAllocationGA
         }
         @Override
         public void run() {
-            individual.hfitnes=individualFitness(individual);
+            //individual.fitness=individualFitness(individual);
+            individual.bins=individualFitness(individual);
+            individual.fitness=1.0f/individual.bins;
         }
     }
 
-    public static Chromosome.Fitness individualFitness(Chromosome individual)
+    public static int individualFitness(Chromosome individual)
     {
-        ArrayList<Task> AllocatedTasks=new ArrayList<>();
-        ArrayList<Machine> openMachines=new ArrayList<>();
-        ArrayList<Machine> notOpenMachines=Machine.CopyMachines(MachineEvents);
-
-        ArrayList<String> assignmentPairs=new ArrayList<>();
-
+        ArrayList<Item> AllocatedItem=new ArrayList<>();
+        ArrayList<Bin> openBins=new ArrayList<>();
+        ArrayList<Bin> notopenBins=Bin.CopyBins(Bins);
 
         individual.assignments.clear();
 
@@ -571,91 +513,57 @@ public class ResourceAllocationGA
             int HeuristicCode=gene.get(0)*100+gene.get(1)*10+gene.get(2);
             int parameter=gene.get(3)*10+gene.get(4);
 
-           /*
+
+            /*
+            HeuristicCode=0;
+            parameter=0;
             ArrayList<Integer> ret=applyOneHeuristic(HeuristicCode,parameter);
-             HeuristicCode=ret.get(0);
-             parameter=ret.get(1);
-          */
+            HeuristicCode=ret.get(0);
+            parameter=ret.get(1);
+            */
+
 
             //------------------------------------------------------------------------------//
 
-            //find machine and task to allocate//
+            //find Bin and item to allocate//
             //------------------------------------------------------------------------------//
-            p=TaskAllocator(HeuristicCode,parameter,AllocatedTasks,p);
-            p=MachineFinder(HeuristicCode,openMachines,notOpenMachines, AllocatedTasks,p);
+            p=itemAllocator(HeuristicCode,parameter,AllocatedItem,p);
+            p=BinFinder(HeuristicCode,openBins,notopenBins, AllocatedItem,p);
             //------------------------------------------------------------------------------//
 
-            Task taskToBeAssigned=p.t;
-            Machine machineToAllocate=p.m;
+            Item itemToBeAssigned=p.t;
+            Bin BinToAllocate=p.m;
 
             //make update//
             //------------------------------------------------------------------------------//
-            AllocatedTasks.add(taskToBeAssigned);
+            AllocatedItem.add(itemToBeAssigned);
 
-            machineToAllocate=Machine.UpdateMachine(machineToAllocate,taskToBeAssigned);
+            BinToAllocate=Bin.UpdateBin(BinToAllocate,itemToBeAssigned);
 
-            int indexInOpen=Machine.ContainsMachine(openMachines,machineToAllocate);
-            int indexInNotOpen=Machine.ContainsMachine(notOpenMachines,machineToAllocate);
+            int indexInOpen=Bin.ContainsBin(openBins,BinToAllocate);
+            int indexInNotOpen=Bin.ContainsBin(notopenBins,BinToAllocate);
             if(indexInOpen==-1)
             {
-                openMachines.add(machineToAllocate);
+                openBins.add(BinToAllocate);
             }
             else
             {
-                openMachines.set(indexInOpen,machineToAllocate);
+                openBins.set(indexInOpen,BinToAllocate);
             }
             if(indexInNotOpen!=-1)
             {
-                notOpenMachines.remove(indexInNotOpen);
+                notopenBins.remove(indexInNotOpen);
             }
             //------------------------------------------------------------------------------//
 
-            individual.assignments.add(new assignmentPair(taskToBeAssigned.taskID,machineToAllocate.myMachineID));
+            individual.assignments.add(new assignmentPair(itemToBeAssigned.itemID,BinToAllocate.binID));
 
-            int probID=taskToBeAssigned.probid;
-            String serverId=machineToAllocate.server;
-
-            String ppp="prb="+String.valueOf(probID)+",server="+serverId;
-            assignmentPairs.add(ppp);
-        }
-        //    System.out.println();
-
-
-        float overallLatency=0;
-        for(int i=0; i<assignmentPairs.size(); i++)
-        {
-            if(latencies.containsKey(assignmentPairs.get(i)))
-            {
-                overallLatency=overallLatency+latencies.get(assignmentPairs.get(i));
-            }
-            else
-            {
-                overallLatency=overallLatency+500;
-            }
         }
 
-        overallLatency=overallLatency/assignmentPairs.size();
 
-        individual.bins=openMachines.size();
-        individual.latency=overallLatency;
-
-        float bscore=1.0f/openMachines.size();;
-
-        float lscore=1.0f/overallLatency;
-
-        float hscore=bscore+lscore;
-
-        return new Chromosome.Fitness(bscore,lscore,hscore);
-    }
-
-    public static float averageFitness(Population population)
-    {
-        float fitness=0;
-        for(int i=0; i<population.size();i++)
-        {
-            fitness=fitness+population.get(i).getFitness(fitnessType);
-        }
-        return fitness/population.size();
+        return openBins.size();
+        //float bscore=1.0f/openBins.size();;
+        // return bscore;
     }
 
     public static Population GenerateNewGeneration(Population generation)
@@ -666,12 +574,11 @@ public class ResourceAllocationGA
 
         for(int i=0; i<generation.size()/2; i++)
         {
-            //System.out.println("i="+i);
-           // Chromosome parent1=new Chromosome(IndividualSelection.RouletteWheel(generation, maximumNumberOfMachines,fitnessType));
-           // Chromosome parent2=new Chromosome(IndividualSelection.RouletteWheel(generation,maximumNumberOfMachines,fitnessType));
+            Chromosome parent1=new Chromosome(IndividualSelection.RouletteWheel(generation));
+            Chromosome parent2=new Chromosome(IndividualSelection.RouletteWheel(generation));
 
-            Chromosome parent1=new Chromosome(IndividualSelection.Tournament(generation, "bin"));
-            Chromosome parent2=new Chromosome(IndividualSelection.Tournament(generation,"latency"));
+           // Chromosome parent1=new Chromosome(IndividualSelection.Tournament(generation));
+           // Chromosome parent2=new Chromosome(IndividualSelection.Tournament(generation));
 
             Chromosome kid1=new Chromosome(parent1);
             Chromosome kid2=new Chromosome(parent2);
@@ -690,7 +597,6 @@ public class ResourceAllocationGA
                 kid2=Mutation.Mutation(kid2,mutationType);
             }
 
-
             individualFitnessRunnable fit1 = new individualFitnessRunnable(kid1, "kid1");
             //new Thread(fit1).start();
 
@@ -700,10 +606,15 @@ public class ResourceAllocationGA
             threads.add(fit1);
             threads.add(fit2);
 
-
     /*
-            kid1.fitness=individualFitness(kid1);
-            kid2.fitness=individualFitness(kid2);
+           // kid1.fitness=individualFitness(kid1);
+           // kid2.fitness=individualFitness(kid2);
+
+            kid1.bins=individualFitness(kid1);
+            kid1.fitness=1.0f/kid1.bins;
+
+            kid2.bins=individualFitness(kid2);
+            kid2.fitness=1.0f/kid2.bins;
 
             newGeneration.add(kid1);
             newGeneration.add(kid2);
@@ -723,10 +634,13 @@ public class ResourceAllocationGA
     {
         Population ret=prevGeneration.addTwoPopulation(prevGeneration,newGeneration);
 
-        Population retf=Pareto.ParetoSelection(ret);
+        ret=ret.sortByFitness(ret);
 
-        /*
-        ret=ret.sortByFitness(ret,fitnessType);
+        for (int i=0;i<ret.size();i++)
+        {
+            System.out.println("fit="+ret.get(i).fitness);
+        }
+
 
         Population retf=new Population();
 
@@ -734,40 +648,15 @@ public class ResourceAllocationGA
         {
             retf.add(ret.get(i));
         }
-        */
         return retf;
-
     }
 
-
-    public static void printer(Population p, int counter, int problemInstance, int testcase, FileWriter fileWriter)
-    {
-        try {
-            FileWriter assWriter = new FileWriter("/home/cc/output/128/" +testcase+"/128-"+problemInstance+"/p128-"+counter+".csv");
-
-            float bins=0;
-            float latency=0;
-            for (int i = 0; i < p.size(); i++) {
-
-                bins=bins+p.get(i).bins;
-                latency=latency+p.get(i).latency;
-
-                //System.out.println(counter+"\tbins="+p.get(i).bins+"\tlatency="+p.get(i).latency);
-                //System.out.println(counter + "," + p.get(i).getFitness("bin") + "," + p.get(i).getFitness("latency")+"\n");
-                assWriter.write(counter + "," + p.get(i).getFitness("bin") + "," + p.get(i).getFitness("latency")+"\n");
-            }
-
-            fileWriter.write(bins/100+","+latency/100+"\n");
-            //System.out.println(counter+"\tbins="+bins/100+"\tlatency="+latency/100);
-
-            assWriter.close();
-        }catch (Exception e){e.printStackTrace();}
-    }
-
-    public static ArrayList<assignmentPair> GA(int population, int consecutiveGenerations, float minDifferenceInFitness,  int maximumG, FileWriter fileWriter, int problemInstance, int testcase)
+    public static ArrayList<assignmentPair> GA(String output_file)
     {
         try
         {
+        //    FileWriter writer = new FileWriter(output_file);
+
             float prevAvgFit = 0;
             float newAvgFit = 0;
             int consGeneration = 0;
@@ -780,10 +669,12 @@ public class ResourceAllocationGA
             prevAvgFit = averageFitness(prevGeneration);
             newAvgFit = averageFitness(newGeneration);
 
-            long startTime = System.currentTimeMillis();
-
             int counter = 0;
-            while (counter < maximumG)
+
+            System.out.println("Generation,averageFitness,BestFitness, leastOpenedBins");
+          //  writer.write("Generation,averageFitness,BestFitness, leastOpenedBins\n");
+            //while (counter < maximumGenerations && consGeneration <consecutive_generations)
+            while (counter < maximumGenerations)
             {
                 prevAvgFit = newAvgFit;
 
@@ -793,309 +684,112 @@ public class ResourceAllocationGA
 
                 prevGeneration = Selection(prevGeneration, newGeneration);
 
-                if(Math.abs(prevAvgFit-newAvgFit)<minDifferenceInFitness)
+                if(Math.abs(prevAvgFit-newAvgFit)<minFitnessDifference)
                     consGeneration++;
                 else
                     consGeneration=0;
 
                 counter++;
 
-                printer(prevGeneration,counter,problemInstance, testcase,fileWriter);
-
-
-                for(int pp=0; pp<prevGeneration.size(); pp=(pp+1)*4)
-                {
-                    PreviousPopulation.push(prevGeneration.get(pp));
-                }
-
+                System.out.println(counter+","+prevAvgFit+","+prevGeneration.get(0).fitness+","+prevGeneration.get(0).bins);
+  //              writer.write(counter+","+prevAvgFit+","+prevGeneration.get(0).fitness+","+prevGeneration.get(0).bins+"\n");
             }
-
-           // PreviousPopulation=prevGeneration;
+//            writer.close();
 
             Chromosome best= prevGeneration.get(0);
 
             return best.assignments;
+
         }catch (Exception e){e.printStackTrace();}
         return null;
     }
 
     public static void main(String[] args) throws Exception
     {
-        System.out.println("hello");
 
-/*
+        String output_file = "./output.csv";
 
-        String p1 = "/home/cc/input/edgeU.csv";
-        String p2 = "/home/cc/input/MachineC.csv";
-
-        String p3="/home/cc/input/128.csv";
+        String path_bin = "./example_input/example_bin_input.csv";
+        String path_item = "./example_input/example_item_input.csv";
+        String path_toConfig="./example_input/config.csv";
 
 
-        FileWriter pWriter = new FileWriter("/home/cc/output/128sout.csv");
+        ReadData(path_bin, path_item, path_toConfig);
 
+        System.out.println("#items="+Items.size());
+        System.out.println("#bins="+Bins.size());
 
-
-//        dynamic=false;
-
-        for(int j=1; j<=30; j++)//30
-        {
-        //    j=31;
-            DynamicFromPrevious=new HashMap<>();
-            DynamicCurrent=new HashMap<>();
-            ratio=0;
-            PreviousPopulation=new Stack<>();
-
-            for (int i = 1; i <= 500; i++)//5
-            {
-       // int i=1;
-                //number_of_allocations = 512;
-                maximumNumberOfMachines = 300;
-
-                ReadDataU(p1, p2, p3, i);
+        decreasingItemsSortedByWidth = Item.ItemSorter(Items, "Width", "decreasing");
+        decreasingItemsSortedByHeight = Item.ItemSorter(Items, "Height", "decreasing");
+        increasingItemsSortedByWidth = Item.ItemSorter(Items, "Width", "increasing");
+        increasingItemsSortedByHeight = Item.ItemSorter(Items, "Height", "increasing");
+        increasingItemsSortedBySpace = Item.ItemSorter(Items, "All", "increasing");
+        decreasingItemsSortedBySpace = Item.ItemSorter(Items, "All", "decreasing");
 
 
 
-                ////////////////////////////////////////////////////
-                crossoverProbability = 0.95f;
-                mutationProbability = 0.05f;
+        decreasingBinsSortedBySpace = Bin.BinSorter(Bins, "All", "decreasing");
+        decreasingBinsSortedByCPULeft = Bin.BinSorter(Bins, "Width", "decreasing");
+        decreasingBinsSortedByMemoryLeft = Bin.BinSorter(Bins, "Height", "decreasing");
 
-                mutationType = "Inversion";   //SingleBitFlip, Inversion, Flip
-                XORtype = "TwoPoint";         //SinglePoint,   TwoPoint
-                fitnessType = "hybrid";
-                ////////////////////////////////////////////////////
+        //////
+        numberOfBitsInGene = 5;
+        number_of_allocations = Items.size();
 
-              //  decreasingTasksSortedByCPU = Task.TaskSorter(TaskEvents, "CPU", "decreasing");
-             //   decreasingTasksSortedByMemory = Task.TaskSorter(TaskEvents, "Memory", "decreasing");
-             //   increasingTasksSortedByCPU = Task.TaskSorter(TaskEvents, "CPU", "increasing");
-             //   increasingTasksSortedByMemory = Task.TaskSorter(TaskEvents, "Memory", "increasing");
-                increasingTasksSortedBySpace = Task.TaskSorter(TaskEvents, "All", "increasing");
-                decreasingTasksSortedBySpace = Task.TaskSorter(TaskEvents, "All", "decreasing");
-
-//                largestsmallestTasksbySpace = Task.newTaskSorter(decreasingTasksSortedBySpace, "largesmall", "decreasing");
-
-                decreasingMachinesSortedBySpace = Machine.MachineSorter(MachineEvents, "All", "decreasing");
-                decreasingMachinesSortedByCPULeft = Machine.MachineSorter(MachineEvents, "CPU", "decreasing");
-                decreasingMachinesSortedByMemoryLeft = Machine.MachineSorter(MachineEvents, "Memory", "decreasing");
-
-                //////
-                numberOfBitsInGene = 5;
-
-                number_of_allocations = TaskEvents.size();
-                //maximumNumberOfMachines = MachineEvents.size();
-
-                ////////
-
-            //    System.out.println("dynamicCurrent=" + DynamicCurrent.size());
-            //    System.out.println("dynamicPrevious=" + DynamicFromPrevious.size());
-
-
-                long startTime = System.currentTimeMillis();
-
-                pWriter.write(i+","+j+","+ratio+","+TaskEvents.size()+"\n");
-
-                ArrayList<assignmentPair> assignments = GA(100, 10, 0.5f, 30, pWriter, i, j);
-
-
-
-
-                System.out.println("ratio=" + ratio);
-                System.out.println("Tasks="+TaskEvents.size());
-                System.out.println("i="+i+"\tj="+j);
-
-
-
-                MachineEvents.clear();
-                TaskEvents.clear();
-
-               // decreasingTasksSortedByCPU.clear();
-              //  decreasingTasksSortedByMemory.clear();
-              //  increasingTasksSortedByCPU.clear();
-             //   increasingTasksSortedByMemory.clear();
-                increasingTasksSortedBySpace.clear();
-                decreasingTasksSortedBySpace.clear();
-
-                decreasingMachinesSortedBySpace.clear();
-                decreasingMachinesSortedByCPULeft.clear();
-                decreasingMachinesSortedByMemoryLeft.clear();
-
-                probs.clear();
-                servers.clear();
-                latencies.clear();
-                pairs.clear();
-                serversSeenByProb.clear();
-            }
-        }
-        pWriter.close();
-
-
-    */
-
+        ArrayList<assignmentPair> assignments = GA(output_file);
     }
 
-
-
-    public static void ReadDataU(String ServerUserLatencyMapping, String machineEvents, String taskEvents,int coming)
+    public static void ReaderHelper(String path, int type)
     {
         try
         {
-            File file = new File(ServerUserLatencyMapping);
+            File file = new File(path);
 
             BufferedReader br = new BufferedReader(new FileReader(file));
             String line;
-            while ((line = br.readLine()) != null) {
-                String splitted[] = line.replace(",,", ",").split(",");
-                if (splitted[0].equals("prb"))
-                    continue;
-
-                int prb = Integer.parseInt(splitted[0]);
-                ArrayList<String> serversForPrb=new ArrayList<>();
-                for (int i = 1; i < splitted.length; i = i + 2) {
-                    float latency = Float.parseFloat(splitted[i]);
-                    String server = splitted[i + 1];
-
-                    serversForPrb.add(server);
-                    ResourceAllocationGA.Pair pair = new ResourceAllocationGA.Pair(prb, server);
-                    pairs.add(pair);
-
-                    int intlatency=Math.round(latency);
-
-                    String p="prb="+String.valueOf(prb)+",server="+server;
-                    latencies.put(p,intlatency);
-                    //latencies.put(pair, intlatency);
-
-                    if (!servers.contains(server))
-                        servers.add(server);
-                }
-                serversSeenByProb.put(prb,serversForPrb);
-                probs.add(prb);
-            }
-            br.close();
-        }catch (Exception e){ System.out.println("exception in reading2"); }
-
-
-        ////
-        try
-        {
-            int taskID=0;
-            File file = new File(taskEvents);
-
-            BufferedReader br = new BufferedReader(new FileReader(file));
-            String line;
-
-            float numerator=0;
-
+            int id=0;
             while ((line = br.readLine()) != null)
             {
-                String splitted[]=line.split(",");
-
-                if (line.contains("coming"))
-                {
+                String splitted[] = line.split(",");
+                if (splitted[0].equals("width"))
                     continue;
-                }
 
-                int com=Integer.parseInt(splitted[0]);
+                int width=Integer.parseInt(splitted[0]);
+                int height=Integer.parseInt(splitted[1]);
+                int number=Integer.parseInt(splitted[2]);
 
-                if (com>coming)
+                for(int i=0; i<number; i++)
                 {
-                    break;
+                    if(type==1)
+                    {
+                        Bins.add(new Bin(id, width, height));
+                    }
+                    else
+                    {
+                        Items.add(new Item(id, width, height));
+                    }
+                    id++;
                 }
-                if(com<coming)
-                {
-                    continue;
-                }
-
-                String jobid=splitted[1];
-
-                float CPUrequest = Float.parseFloat(splitted[4]);           //new
-                float memoryRequest = Float.parseFloat(splitted[5]);        //new
-                int leaving=Integer.parseInt(splitted[6]);
-
-
-                if(CPUrequest<1)
-                {
-                    CPUrequest=CPUrequest;
-                }
-               // else if(CPUrequest*10>=1){
-               //     System.out.println("a");
-               // }
-                if(memoryRequest<1)
-                {
-                    memoryRequest=memoryRequest;
-                }
-                //else if(memoryRequest*10>=1){
-                //    System.out.println("b");
-                //}
-
-
-
-                int probId=probs.get(taskID%probs.size());
-
-                if(DynamicFromPrevious.containsKey(jobid))
-                {
-                    probId=DynamicFromPrevious.get(jobid);
-                    numerator++;
-
-                }
-
-                ratio=(numerator)/DynamicCurrent.size();
-
-                DynamicCurrent.put(jobid,probId);
-
-                TaskEvents.add(new Task(taskID,CPUrequest,memoryRequest,probId));
-
-                //if(taskID+1==number_of_allocations)
-                //    break;
-
-                taskID++;
-            }
-
-
-
-            DynamicFromPrevious.clear();
-
-            DynamicCurrent.forEach((key,value) -> DynamicFromPrevious.put(key,value));
-
-            DynamicCurrent.clear();
-
-            br.close();
-
-        }catch (Exception e){
-            e.printStackTrace();
-            System.out.println("exception in reading taskevents");
-        }
-
-        try
-        {
-            File file = new File(machineEvents);
-
-            BufferedReader br = new BufferedReader(new FileReader(file));
-            String line;
-
-            int MyMachineId=0;
-
-            while ((line = br.readLine()) != null)
-            {
-                String splitted []=line.split(",");
-
-                float CPU;
-                float Memory;
-
-                CPU=Float.parseFloat(splitted[1]);
-                Memory=Float.parseFloat(splitted[2]);
-                //MyMachineId=Integer.parseInt(splitted[0]);
-
-                String server=servers.get(MyMachineId%servers.size());
-
-                MachineEvents.add(new Machine(MyMachineId,CPU,Memory,server));
-
-                if(MyMachineId+1==maximumNumberOfMachines)
-                    break;
-
-                MyMachineId++;
             }
             br.close();
-        }catch (Exception e){ System.out.println("exception in reading"); }
+        }catch (Exception e){ System.out.println("exception in ReaderHelper"); }
     }
 
+    public static void ReadData(String path_bin, String path_item, String path_toConfig)
+    {
+        XORtype="TwoPoint";         //SinglePoint,   TwoPoint
+        mutationType="Inversion";   //SingleBitFlip, Inversion, Flip
+        selectionType="RouletteWheel";
 
+        crossoverProbability=0.95f;
+        mutationProbability=0.05f;
+        population=100;
+        consecutive_generations=10;
+        minFitnessDifference=0.5;
+        maximumGenerations=1;
+
+
+        ReaderHelper(path_bin,1);
+        ReaderHelper(path_item,0);
+    }
 }
