@@ -116,7 +116,7 @@ public class Bin
                     return (int) (p1.widthLeft - p2.widthLeft); // Ascending
                 }
             });
-            ret.sort(Comparator.comparingDouble(Bin::getTotalCapacityLeft)); //smallest to largest
+            ret.sort(Comparator.comparingDouble(Bin::getwidthLeft)); //smallest to largest
         }
         else if(type.equals("Height"))
         {
@@ -127,7 +127,7 @@ public class Bin
                     return (int) (p1.heightLeft - p2.heightLeft); // Ascending
                 }
             });
-            ret.sort(Comparator.comparingDouble(Bin::getTotalCapacityLeft)); //smallest to largest
+            ret.sort(Comparator.comparingDouble(Bin::getheightLeft)); //smallest to largest
         }
 
         if(typeOfOrder.equals("decreasing"))
